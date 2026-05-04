@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Educational Decision Attribution</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;600&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0d0f14;
+    --surface: #13161e;
+    --surface2: #1a1e2a;
+    --border: #2a2f3d;
+    --accent: #4fffb0;
+    --accent2: #4fa8ff;
+    --accent3: #ff6b6b;
+    --text: #e8eaf0;
+    --muted: #6b7390;
+    --font: 'IBM Plex Sans', sans-serif;
+    --mono: 'IBM Plex Mono', monospace;
+  }
+
+  body { background: var(--bg); color: var(--text); font-family: var(--font); min-height: 100vh; }
+
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 1.2rem 2rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    background: var(--surface);
+  }
+  .logo { font-family: var(--mono); font-size: 1.1rem; font-weight: 600; color: var(--accent); letter-spacing: 0.05em; }
+  .logo span { color: var(--muted); font-weight: 400; }
+  .badge { font-size: 0.65rem; background: rgba(79,255,176,0.12); color: var(--accent); border: 1px solid rgba(79,255,176,0.3); padding: 2px 8px; border-radius: 20px; font-family: var(--mono); margin-left: auto; }
+
+  main { max-width: 1100px; margin: 0 auto; padding: 2rem; }
+
+  .tabs { display: flex; gap: 0.5rem; margin-bottom: 2rem; }
+  .tab {
+    font-family: var(--mono); font-size: 0.8rem; padding: 0.5rem 1.2rem;
+    background: transparent; border: 1px solid var(--border); color: var(--muted);
+    border-radius: 4px; cursor: pointer; transition: all 0.2s;
+  }
+  .tab.active { background: rgba(79,255,176,0.1); color: var(--accent); border-color: rgba(79,255,176,0.4); }
+  .tab:hover:not(.active) { border-color: var(--muted); color: var(--text); }
+
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+  @media(max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; padding: 1.25rem; display: flex; flex-direction: column; gap: 0.75rem;
+  }
+  .card-label { font-family: var(--mono); font-size: 0.7rem; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; }
+
+  textarea, input[type=text] {
+    width: 100%; background: var(--surface2); border: 1px solid var(--border);
+    color: var(--text); font-family: var(--font); font-size: 0.9rem;
+    border-radius: 6px; padding: 0.75rem; resize: vertical; outline: none;
+    transition: border-color 0.2s;
+  }
+  textarea:focus, input[type=text]:focus { border-color: rgba(79,255,176,0.5); }
+  textarea { min-height: 160px; }
+
+  .run-btn {
+    font-family: var(--mono); font-size: 0.85rem; font-weight: 600;
+    background: var(--accent); color: #0d0f14; border: none;
+    padding: 0.65rem 1.5rem; border-radius: 6px; cursor: pointer;
+    transition: opacity 0.2s; width: 100%;
+  }
+  .run-btn:hover { opacity: 0.85; }
+  .run-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .results { margin-top: 2rem; display: none; flex-direction: column; gap: 1.5rem; }
+  .results.show { display: flex; }
+
+  .result-box {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 1.25rem;
+  }
+  .result-box h3 {
+    font-family: var(--mono); font-size: 0.75rem; color: var(--muted);
+    text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 1rem;
+    display: flex; align-items: center; gap: 0.5rem;
+  }
+  .result-box h3 .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); display: inline-block; }
+  .dot-blue { background: var(--accent2) !important; }
+  .dot-red { background: var(--accent3) !important; }
+
+  .summary-text {
+    font-size: 1rem; line-height: 1.7; color: var(--text);
+    background: var(--surface2); border-radius: 6px; padding: 1rem;
+    border-left: 3px solid var(--accent);
+  }
+
+  .answer-text {
+    font-size: 1.1rem; font-weight: 600; color: var(--accent);
+    font-family: var(--mono);
+  }
+  .confidence { font-size: 0.8rem; color: var(--muted); font-family: var(--mono); margin-top: 0.3rem; }
+
+  /* LIME bars */
+  .lime-bars { display: flex; flex-direction: column; gap: 0.5rem; }
+  .lime-row { display: flex; align-items: center; gap: 0.75rem; }
+  .lime-word { font-family: var(--mono); font-size: 0.8rem; width: 120px; flex-shrink: 0; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .lime-bar-wrap { flex: 1; height: 18px; background: var(--surface2); border-radius: 3px; position: relative; overflow: hidden; }
+  .lime-bar { height: 100%; border-radius: 3px; transition: width 0.4s ease; }
+  .lime-val { font-family: var(--mono); font-size: 0.7rem; color: var(--muted); width: 60px; text-align: right; flex-shrink: 0; }
+
+  /* SHAP tokens */
+  .shap-tokens { display: flex; flex-wrap: wrap; gap: 6px; line-height: 1; }
+  .shap-tok {
+    font-family: var(--mono); font-size: 0.78rem;
+    padding: 3px 7px; border-radius: 4px; cursor: default;
+    border: 1px solid transparent;
+    transition: transform 0.15s;
+  }
+  .shap-tok:hover { transform: scale(1.05); }
+
+  /* Sentence attribution */
+  .sent-list { display: flex; flex-direction: column; gap: 0.5rem; }
+  .sent-row { display: flex; gap: 0.75rem; align-items: flex-start; }
+  .sent-score { font-family: var(--mono); font-size: 0.75rem; color: var(--muted); width: 42px; flex-shrink: 0; padding-top: 2px; }
+  .sent-text { font-size: 0.88rem; line-height: 1.55; color: var(--text); }
+  .sent-bar { height: 3px; border-radius: 2px; margin-top: 4px; background: var(--accent); opacity: 0.6; }
+
+  .loader { display: none; text-align: center; padding: 2rem; font-family: var(--mono); color: var(--muted); font-size: 0.85rem; }
+  .loader.show { display: block; }
+  .spinner { display: inline-block; width: 18px; height: 18px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; margin-right: 8px; vertical-align: middle; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<header>
+  <span style="font-size:0.85rem; color:var(--muted);">Decision Attribution for Education</span>
+  <span class="badge">LIME · SHAP · TF-IDF</span>
+</header>
+
+<main>
+  <div class="tabs" style="margin-top:1.5rem;">
+    <button class="tab active" onclick="switchTab('summarize', this)">Summarization</button>
+    <button class="tab" onclick="switchTab('qa', this)">Question Answering</button>
+  </div>
+
+  <!-- SUMMARIZATION PANEL -->
+  <div class="panel active" id="panel-summarize">
+    <div class="card" style="max-width:100%;">
+      <div class="card-label">Input — Educational Text</div>
+      <textarea id="sum-text" placeholder="Paste a lecture excerpt, textbook paragraph, or article here..."></textarea>
+      <button class="run-btn" id="sum-btn" onclick="runSummarize()">▶ Run Summarization + Explain</button>
+    </div>
+
+    <div class="loader" id="sum-loader"><span class="spinner"></span>Running models… this may take 30–60s on first load</div>
+
+    <div class="results" id="sum-results">
+      <div class="result-box">
+        <h3><span class="dot"></span>Summary Output</h3>
+        <div class="summary-text" id="sum-output">—</div>
+      </div>
+
+      <div class="grid">
+        <div class="result-box">
+          <h3><span class="dot"></span>LIME — Word Attribution</h3>
+          <div class="lime-bars" id="sum-lime"></div>
+        </div>
+        <div class="result-box">
+          <h3><span class="dot dot-blue"></span>SHAP — Token Attribution</h3>
+          <div class="shap-tokens" id="sum-shap"></div>
+        </div>
+      </div>
+
+      <div class="result-box">
+        <h3><span class="dot dot-red"></span>Sentence-Level Attribution (TF-IDF)</h3>
+        <div class="sent-list" id="sum-sent"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- QA PANEL -->
+  <div class="panel" id="panel-qa">
+    <div class="grid">
+      <div class="card">
+        <div class="card-label">Context Passage</div>
+        <textarea id="qa-context" placeholder="Paste the educational context / reading passage here..."></textarea>
+      </div>
+      <div class="card">
+        <div class="card-label">Question</div>
+        <input type="text" id="qa-question" placeholder="e.g. What is the main concept explained?"/>
+        <div style="margin-top:auto; padding-top:1rem;">
+          <button class="run-btn" id="qa-btn" onclick="runQA()">▶ Get Answer + Explain</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="loader" id="qa-loader"><span class="spinner"></span>Running models… this may take 30–60s on first load</div>
+
+    <div class="results" id="qa-results">
+      <div class="result-box">
+        <h3><span class="dot"></span>Model Answer</h3>
+        <div class="answer-text" id="qa-answer">—</div>
+        <div class="confidence" id="qa-conf"></div>
+      </div>
+
+      <div class="grid">
+        <div class="result-box">
+          <h3><span class="dot"></span>LIME — Word Attribution</h3>
+          <div class="lime-bars" id="qa-lime"></div>
+        </div>
+        <div class="result-box">
+          <h3><span class="dot dot-blue"></span>SHAP — Token Attribution</h3>
+          <div class="shap-tokens" id="qa-shap"></div>
+        </div>
+      </div>
+
+      <div class="result-box">
+        <h3><span class="dot dot-red"></span>Sentence-Level Attribution (TF-IDF)</h3>
+        <div class="sent-list" id="qa-sent"></div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+function switchTab(name, el) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('panel-' + name).classList.add('active');
+}
+
+// ── LIME renderer ──────────────────────────────────────────────────────────
+function renderLIME(data, containerId) {
+  const el = document.getElementById(containerId);
+  if (!data || data.length === 0) { el.innerHTML = '<span style="color:var(--muted);font-size:0.8rem;">No data</span>'; return; }
+  const maxAbs = Math.max(...data.map(d => Math.abs(d.weight)), 0.0001);
+  el.innerHTML = data.map(d => {
+    const pct = (Math.abs(d.weight) / maxAbs * 100).toFixed(1);
+    const color = d.weight >= 0 ? 'var(--accent)' : 'var(--accent3)';
+    return `
+      <div class="lime-row">
+        <span class="lime-word" title="${d.word}">${d.word}</span>
+        <div class="lime-bar-wrap">
+          <div class="lime-bar" style="width:${pct}%; background:${color};"></div>
+        </div>
+        <span class="lime-val">${d.weight > 0 ? '+' : ''}${d.weight.toFixed(3)}</span>
+      </div>`;
+  }).join('');
+}
+
+// ── SHAP renderer ──────────────────────────────────────────────────────────
+function renderSHAP(data, containerId) {
+  const el = document.getElementById(containerId);
+  if (!data || data.length === 0) { el.innerHTML = '<span style="color:var(--muted);font-size:0.8rem;">No data</span>'; return; }
+  const maxAbs = Math.max(...data.map(d => Math.abs(d.value)), 0.0001);
+  el.innerHTML = data.map(d => {
+    const intensity = Math.min(Math.abs(d.value) / maxAbs, 1);
+    const isPos = d.value >= 0;
+    const alpha = (0.15 + intensity * 0.65).toFixed(2);
+    const bg = isPos ? `rgba(79,255,176,${alpha})` : `rgba(255,107,107,${alpha})`;
+    const border = isPos ? `rgba(79,255,176,0.5)` : `rgba(255,107,107,0.5)`;
+    const textColor = intensity > 0.5 ? (isPos ? '#0d0f14' : '#fff') : 'var(--text)';
+    return `<span class="shap-tok" style="background:${bg};border-color:${border};color:${textColor};" title="SHAP: ${d.value.toFixed(4)}">${d.token}</span>`;
+  }).join('');
+}
+
+// ── Sentence attribution renderer ──────────────────────────────────────────
+function renderSentences(data, containerId) {
+  const el = document.getElementById(containerId);
+  if (!data || data.length === 0) { el.innerHTML = '<span style="color:var(--muted);font-size:0.8rem;">No data</span>'; return; }
+  el.innerHTML = data.slice(0, 8).map(d => `
+    <div class="sent-row">
+      <span class="sent-score">${(d.score * 100).toFixed(0)}%</span>
+      <div>
+        <div class="sent-text">${d.sentence}</div>
+        <div class="sent-bar" style="width:${(d.score * 100).toFixed(1)}%;"></div>
+      </div>
+    </div>`).join('');
+}
+
+// ── Summarize ──────────────────────────────────────────────────────────────
+async function runSummarize() {
+  const text = document.getElementById('sum-text').value.trim();
+  if (!text) { alert('Please enter some text.'); return; }
+
+  document.getElementById('sum-btn').disabled = true;
+  document.getElementById('sum-loader').classList.add('show');
+  document.getElementById('sum-results').classList.remove('show');
+
+  try {
+    const res = await fetch('/api/summarize', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text })
+    });
+    const data = await res.json();
+
+    document.getElementById('sum-output').textContent = data.summary;
+    renderLIME(data.lime, 'sum-lime');
+    renderSHAP(data.shap, 'sum-shap');
+    renderSentences(data.sentence_attribution, 'sum-sent');
+    document.getElementById('sum-results').classList.add('show');
+  } catch (e) {
+    alert('Error: ' + e.message);
+  } finally {
+    document.getElementById('sum-btn').disabled = false;
+    document.getElementById('sum-loader').classList.remove('show');
+  }
+}
+
+// ── QA ─────────────────────────────────────────────────────────────────────
+async function runQA() {
+  const context = document.getElementById('qa-context').value.trim();
+  const question = document.getElementById('qa-question').value.trim();
+  if (!context || !question) { alert('Please enter both context and question.'); return; }
+
+  document.getElementById('qa-btn').disabled = true;
+  document.getElementById('qa-loader').classList.add('show');
+  document.getElementById('qa-results').classList.remove('show');
+
+  try {
+    const res = await fetch('/api/qa', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question, context })
+    });
+    const data = await res.json();
+
+    document.getElementById('qa-answer').textContent = data.answer;
+    document.getElementById('qa-conf').textContent = `Confidence: ${(data.confidence * 100).toFixed(1)}%`;
+    renderLIME(data.lime, 'qa-lime');
+    renderSHAP(data.shap, 'qa-shap');
+    renderSentences(data.sentence_attribution, 'qa-sent');
+    document.getElementById('qa-results').classList.add('show');
+  } catch (e) {
+    alert('Error: ' + e.message);
+  } finally {
+    document.getElementById('qa-btn').disabled = false;
+    document.getElementById('qa-loader').classList.remove('show');
+  }
+}
+</script>
+</body>
+</html>
